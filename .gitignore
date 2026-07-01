@@ -1,2 +1,6 @@
 venv/
-backend/venv/
+__pycache__/
+node_modules/
+.env
+jira_data/
+.DS_Store

@@ -1,0 +1,35 @@
+
+services:
+  
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    environment:
+      - JIRA_URL=http://jira:8080 
+
+  
+  frontend:
+    build: ./frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules 
+
+ 
+  jira:
+    image: atlassian/jira-software:latest
+    ports:
+      - "8080:8080"
+    volumes:
+      - jira_data:/var/atlassian/application-data/jira
+    environment:
+      - JVM_MINIMUM_MEMORY=1024m
+      - JVM_MAXIMUM_MEMORY=2048m
+
+
+volumes:
+  jira_data:

@@ -1,19 +1,26 @@
 services:
   backend:
     build: ./backend
+    container_name: scrum-master-backend
     ports:
       - "8000:8000"
     volumes:
       - ./backend:/app
+      # Empêche l'écrasement des dépendances locales par le conteneur
+      - /app/__pycache__
+    env_file:
+      - .env
     environment:
-      - JIRA_URL=https://ton-domaine.atlassian.net
-      - JIRA_EMAIL=ton-email@exemple.com
-      - JIRA_API_TOKEN=${JIRA_API_TOKEN}
+      - PYTHONUNBUFFERED=1
+    restart: always
 
   frontend:
     build: ./frontend
+    container_name: scrum-master-frontend
     ports:
       - "5173:5173"
     volumes:
       - ./frontend:/app
+      # Volume anonyme pour les node_modules (critique pour la performance)
       - /app/node_modules
+    restart: always

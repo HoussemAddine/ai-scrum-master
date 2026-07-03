@@ -54,3 +54,22 @@ pip install -r backend/requirements.txt
 * **Frontend App**: `http://localhost:5173`
 
 ---
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

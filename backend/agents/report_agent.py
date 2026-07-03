@@ -1,23 +1,34 @@
-from agents.observer_agent import observer_agent
-from agents.ai_client import get_ai_response
+from typing import Optional
 
-class ReportAgent:
-    def generate_sprint_report(self, project_key="SCRUM"):
-        # recuperr the data from the observer agent
-        data = observer_agent.get_sprint_health(project_key)
-        
-        # the constructed prompt for the AI 
-        prompt = f"""
-        Tu es un expert Scrum Master. Analyse les données suivantes du sprint :
-        {data}
-        
-        Produis un rapport court et motivant incluant :
-        - Un résumé de l'avancement.
-        - Une alerte si des tickets critiques sont en retard.
-        - Une suggestion d'amélioration pour le prochain sprint.
-        """
-        
-        # call the AI client to get the response
-        return get_ai_response(prompt)
+from agents.ai_client import get_llm
+from agents.observer_agent import get_sprint_health
 
-report_agent = ReportAgent()
+REPORT_PROMPT_TEMPLATE = """\
+Tu es un Scrum Master expérimenté. Voici les données brutes de l'état du sprint
+au format JSON :
+
+{data}
+
+Rédige un rapport court et actionnable pour l'équipe, en français, structuré ainsi :
+1. **Résumé de l'avancement** (avancement réel vs attendu, en une phrase claire)
+2. **Points de blocage** (liste les tickets bloqués s'il y en a, sinon dis qu'il n'y en a pas)
+3. **Charge de l'équipe** (signale un déséquilibre s'il y en a un, sinon dis que la charge est équilibrée)
+4. **Recommandation** (une ou deux actions concrètes pour le Scrum Master)
+
+Reste concis : 150 mots maximum. N'invente aucune donnée qui n'est pas dans le JSON.
+"""
+
+
+def generate_report(project_key: str, board_id: Optional[int] = None) -> str:
+    """
+    Génère un rapport de sprint lisible à partir des données de santé du sprint.
+    Combine l'outil d'observation (données factuelles Jira) avec le LLM
+    (mise en forme et recommandations), plutôt que de renvoyer le JSON brut.
+    """
+    raw_result = get_sprint_health.invoke({"project_key": project_key, "board_id": board_id})
+
+    llm = get_llm()
+    prompt = REPORT_PROMPT_TEMPLATE.format(data=raw_result)
+    response = llm.invoke(prompt)
+
+    return response.content

@@ -1,36 +1,39 @@
-import os
-from google import genai
-from agents.observer_agent import observer_agent
+try:
+    from langchain_classic.agents import AgentExecutor, create_tool_calling_agent
+except ImportError:
+    from langchain.agents import AgentExecutor, create_tool_calling_agent
+
+from langchain_core.prompts import ChatPromptTemplate
+from agents.ai_client import get_llm
+from agents.observer_agent import get_sprint_health
+
 
 class ChatAgent:
     def __init__(self):
-        self.client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
-        self.chat = self.client.chats.create(model="gemini-2.0-flash")
-        self.initialized = False  # Track if context is sent
+        self.llm = get_llm()
+        self.tools = [get_sprint_health]
 
-    def _initialize_context(self):
-        """Lazy initialization of the context."""
-        if not self.initialized:
-            try:
-                sprint_data = observer_agent.get_sprint_health("SCRUM")
-                context_prompt = (
-                    f"You are an expert AI Scrum Master. "
-                    f"Current sprint status: {sprint_data}. "
-                    "Always answer in French."
-                )
-                self.chat.send_message(context_prompt)
-                self.initialized = True
-            except Exception as e:
-                print(f"Context initialization failed: {e}")
+        self.prompt = ChatPromptTemplate.from_messages([
+            (
+                "system",
+                "Tu es un Scrum Master expert. Utilise les outils fournis pour "
+                "répondre aux questions sur l'état du sprint Jira. Si un outil "
+                "renvoie une erreur, explique-la clairement à l'utilisateur "
+                "plutôt que d'inventer une réponse.",
+            ),
+            ("human", "{input}"),
+            ("placeholder", "{agent_scratchpad}"),
+        ])
 
-    def send_message(self, message: str):
-        # Initialize context on the first message
-        self._initialize_context()
-        
-        try:
-            response = self.chat.send_message(message)
-            return response.text
-        except Exception as e:
-            return "Désolé, l'IA est temporairement indisponible (serveurs saturés). Réessaie dans un instant."
+        self.agent = create_tool_calling_agent(self.llm, self.tools, self.prompt)
 
-chat_agent = ChatAgent()
+        self.agent_executor = AgentExecutor(
+            agent=self.agent,
+            tools=self.tools,
+            verbose=True,
+            handle_parsing_errors=True,
+        )
+
+    def send_message(self, message: str) -> str:
+        result = self.agent_executor.invoke({"input": message})
+        return result["output"]
